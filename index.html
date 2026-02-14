@@ -5,10 +5,10 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>알바 기록</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;600;700&family=Noto+Sans+JP:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&display=swap" rel="stylesheet" />
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { background: #faf9f6; color: #1a1a1a; font-family: 'Noto Sans KR', -apple-system, sans-serif; }
+    body { background: #faf9f6; color: #1a1a1a; font-family: 'Noto Sans KR', 'Noto Sans JP', -apple-system, sans-serif; }
     .container { max-width: 480px; margin: 0 auto; padding: 48px 24px 72px; }
 
     .nav-btn {
@@ -82,6 +82,14 @@
 
     .mono { font-family: 'DM Mono', monospace; }
     .serif { font-family: 'Fraunces', serif; }
+
+    .lang-btn {
+      background: none; border: none; color: #ccc; font-size: 12px;
+      cursor: pointer; padding: 4px 8px; border-radius: 4px;
+      font-family: inherit; transition: all 0.15s; letter-spacing: 0.3px;
+    }
+    .lang-btn:hover { color: #888; }
+    .lang-btn.active { color: #1a1a1a; font-weight: 600; }
   </style>
 </head>
 <body>
@@ -92,8 +100,79 @@
   <script type="text/babel">
     const { useState, useMemo } = React;
 
-    const MONTHS = ["1월","2월","3월","4월","5월","6월","7월","8월","9월","10월","11월","12월"];
+    // ── i18n ──
+    const i18n = {
+      ko: {
+        title: "알바 기록",
+        subtitle: "근무시간 입력 · 예상 급여 자동 계산",
+        hourlyRate: "시급",
+        edit: "수정",
+        confirm: "확인",
+        workHours: "근무시간",
+        expectedPay: "예상 급여",
+        gross: "Brutto",
+        date: "날짜",
+        start: "시작",
+        end: "종료",
+        hours: "시간",
+        noRecords: "기록이 없습니다",
+        addWork: "+ 근무 추가",
+        yearTotal: (y) => `${y}년 누적`,
+        totalHours: "총 근무시간",
+        totalPay: "총 예상 급여",
+        days: (n) => `${n}일`,
+        daySuffix: "일",
+        months: ["1월","2월","3월","4월","5월","6월","7월","8월","9월","10월","11월","12월"],
+      },
+      en: {
+        title: "Work Log",
+        subtitle: "Log hours · Auto-calculate pay",
+        hourlyRate: "Hourly rate",
+        edit: "Edit",
+        confirm: "OK",
+        workHours: "Hours",
+        expectedPay: "Est. Pay",
+        gross: "Gross",
+        date: "Date",
+        start: "Start",
+        end: "End",
+        hours: "Hours",
+        noRecords: "No records yet",
+        addWork: "+ Add shift",
+        yearTotal: (y) => `${y} Total`,
+        totalHours: "Total hours",
+        totalPay: "Total est. pay",
+        days: (n) => `${n}d`,
+        daySuffix: "",
+        months: ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"],
+      },
+      ja: {
+        title: "バイト記録",
+        subtitle: "勤務時間入力 · 予想給料自動計算",
+        hourlyRate: "時給",
+        edit: "修正",
+        confirm: "確認",
+        workHours: "勤務時間",
+        expectedPay: "予想給料",
+        gross: "税前",
+        date: "日付",
+        start: "開始",
+        end: "終了",
+        hours: "時間",
+        noRecords: "記録がありません",
+        addWork: "+ シフト追加",
+        yearTotal: (y) => `${y}年 累計`,
+        totalHours: "合計勤務時間",
+        totalPay: "合計予想給料",
+        days: (n) => `${n}日`,
+        daySuffix: "日",
+        months: ["1月","2月","3月","4月","5月","6月","7月","8月","9月","10月","11月","12月"],
+      },
+    };
 
+    const LANG_LABELS = { ko: "한국어", en: "EN", ja: "日本語" };
+
+    // ── Utils ──
     const defaultEntries = {
       "2025-01": [
         { date: "20", start: "09:00", end: "18:00" },
@@ -130,7 +209,9 @@
       return new Intl.NumberFormat("de-DE", { style: "currency", currency: "EUR" }).format(n);
     }
 
+    // ── App ──
     function App() {
+      const [lang, setLang] = useState("ko");
       const [year, setYear] = useState(2025);
       const [monthIdx, setMonthIdx] = useState(0);
       const [hourlyRate, setHourlyRate] = useState(12.82);
@@ -138,6 +219,7 @@
       const [editingRate, setEditingRate] = useState(false);
       const [rateInput, setRateInput] = useState("12.82");
 
+      const t = i18n[lang];
       const monthKey = `${year}-${String(monthIdx + 1).padStart(2, "0")}`;
       const currentEntries = entries[monthKey] || [];
 
@@ -190,19 +272,29 @@
 
       return (
         <div className="container">
-          {/* Header */}
-          <div style={{ marginBottom: 40 }}>
-            <div className="serif" style={{ fontSize: 30, fontWeight: 700, letterSpacing: -0.5, lineHeight: 1.2 }}>
-              알바 기록
+          {/* Header + Lang */}
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 40 }}>
+            <div>
+              <div className="serif" style={{ fontSize: 30, fontWeight: 700, letterSpacing: -0.5, lineHeight: 1.2 }}>
+                {t.title}
+              </div>
+              <div style={{ fontSize: 13, color: "#aaa", marginTop: 6 }}>
+                {t.subtitle}
+              </div>
             </div>
-            <div style={{ fontSize: 13, color: "#aaa", marginTop: 6 }}>
-              근무시간 입력 · 예상 급여 자동 계산
+            <div style={{ display: "flex", gap: 2, marginTop: 4 }}>
+              {Object.keys(LANG_LABELS).map(l => (
+                <button key={l} className={`lang-btn ${lang === l ? "active" : ""}`}
+                  onClick={() => setLang(l)}>
+                  {LANG_LABELS[l]}
+                </button>
+              ))}
             </div>
           </div>
 
           {/* Hourly Rate */}
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 32, paddingBottom: 20, borderBottom: "1px solid #f0ede7" }}>
-            <span style={{ fontSize: 13, color: "#999" }}>시급</span>
+            <span style={{ fontSize: 13, color: "#999" }}>{t.hourlyRate}</span>
             {editingRate ? (
               <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
                 <input className="rate-num-input" type="number" step="0.01" value={rateInput}
@@ -212,12 +304,12 @@
                     if (e.key === "Escape") setEditingRate(false);
                   }} />
                 <span style={{ fontSize: 13, color: "#999" }}>€</span>
-                <button className="confirm-btn" onClick={() => { setHourlyRate(Number(rateInput) || 12.82); setEditingRate(false); }}>확인</button>
+                <button className="confirm-btn" onClick={() => { setHourlyRate(Number(rateInput) || 12.82); setEditingRate(false); }}>{t.confirm}</button>
               </div>
             ) : (
               <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                 <span className="mono" style={{ fontSize: 16, fontWeight: 500 }}>{formatEuro(hourlyRate)}</span>
-                <button className="rate-edit-btn" onClick={() => { setRateInput(String(hourlyRate)); setEditingRate(true); }}>수정</button>
+                <button className="rate-edit-btn" onClick={() => { setRateInput(String(hourlyRate)); setEditingRate(true); }}>{t.edit}</button>
               </div>
             )}
           </div>
@@ -227,7 +319,7 @@
             <button className="nav-btn" onClick={prevMonth}>‹</button>
             <div style={{ textAlign: "center" }}>
               <span className="mono" style={{ fontSize: 12, color: "#bbb" }}>{year}</span>
-              <div className="serif" style={{ fontSize: 22, fontWeight: 600, marginTop: 1 }}>{MONTHS[monthIdx]}</div>
+              <div className="serif" style={{ fontSize: 22, fontWeight: 600, marginTop: 1 }}>{t.months[monthIdx]}</div>
             </div>
             <button className="nav-btn" onClick={nextMonth}>›</button>
           </div>
@@ -235,29 +327,29 @@
           {/* Summary */}
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 1, background: "#eceae4", borderRadius: 12, overflow: "hidden", marginBottom: 32 }}>
             <div style={{ background: "#fff", padding: "20px 18px" }}>
-              <div style={{ fontSize: 11, color: "#bbb", marginBottom: 8, letterSpacing: 0.8, textTransform: "uppercase" }}>근무시간</div>
+              <div style={{ fontSize: 11, color: "#bbb", marginBottom: 8, letterSpacing: 0.8, textTransform: "uppercase" }}>{t.workHours}</div>
               <div className="mono" style={{ fontSize: 24, fontWeight: 500, color: "#2d7a4f" }}>{formatHours(totalHours)}</div>
-              <div style={{ fontSize: 12, color: "#ccc", marginTop: 6 }}>{currentEntries.length}일</div>
+              <div style={{ fontSize: 12, color: "#ccc", marginTop: 6 }}>{t.days(currentEntries.length)}</div>
             </div>
             <div style={{ background: "#fff", padding: "20px 18px" }}>
-              <div style={{ fontSize: 11, color: "#bbb", marginBottom: 8, letterSpacing: 0.8, textTransform: "uppercase" }}>예상 급여</div>
+              <div style={{ fontSize: 11, color: "#bbb", marginBottom: 8, letterSpacing: 0.8, textTransform: "uppercase" }}>{t.expectedPay}</div>
               <div className="mono" style={{ fontSize: 24, fontWeight: 500 }}>{formatEuro(Math.round(expectedPay))}</div>
-              <div style={{ fontSize: 12, color: "#ccc", marginTop: 6 }}>Brutto</div>
+              <div style={{ fontSize: 12, color: "#ccc", marginTop: 6 }}>{t.gross}</div>
             </div>
           </div>
 
-          {/* Table Header */}
+          {/* Table */}
           <div style={{ marginBottom: 16 }}>
             <div style={{ display: "grid", gridTemplateColumns: "48px 1fr 1fr 56px 28px", padding: "0 0 8px", borderBottom: "1.5px solid #1a1a1a", fontSize: 10, color: "#bbb", letterSpacing: 1, textTransform: "uppercase" }}>
-              <span>날짜</span>
-              <span style={{ textAlign: "center" }}>시작</span>
-              <span style={{ textAlign: "center" }}>종료</span>
-              <span style={{ textAlign: "right", paddingRight: 8 }}>시간</span>
+              <span>{t.date}</span>
+              <span style={{ textAlign: "center" }}>{t.start}</span>
+              <span style={{ textAlign: "center" }}>{t.end}</span>
+              <span style={{ textAlign: "right", paddingRight: 8 }}>{t.hours}</span>
               <span />
             </div>
 
             {currentEntries.length === 0 ? (
-              <div style={{ textAlign: "center", padding: "44px 0", color: "#d0cdc6", fontSize: 14 }}>기록이 없습니다</div>
+              <div style={{ textAlign: "center", padding: "44px 0", color: "#d0cdc6", fontSize: 14 }}>{t.noRecords}</div>
             ) : (
               currentEntries.map((entry, idx) => {
                 const hours = calcHours(entry.start, entry.end);
@@ -268,7 +360,7 @@
                       <div style={{ display: "flex", alignItems: "baseline", gap: 1 }}>
                         <input className="date-input" type="text" value={entry.date}
                           onChange={e => updateEntry(idx, "date", e.target.value)} placeholder="—" />
-                        <span style={{ fontSize: 10, color: "#ccc" }}>일</span>
+                        {t.daySuffix && <span style={{ fontSize: 10, color: "#ccc" }}>{t.daySuffix}</span>}
                       </div>
                       <div style={{ textAlign: "center" }}>
                         <input className="time-input" type="time" value={entry.start}
@@ -294,18 +386,18 @@
             )}
           </div>
 
-          <button className="add-btn" onClick={addEntry}>+ 근무 추가</button>
+          <button className="add-btn" onClick={addEntry}>{t.addWork}</button>
 
           {/* Yearly */}
           {yearlySummary.months > 0 && (
             <div style={{ marginTop: 36, padding: "20px 0 0", borderTop: "1px solid #f0ede7" }}>
-              <div style={{ fontSize: 10, color: "#bbb", letterSpacing: 1, textTransform: "uppercase", marginBottom: 14 }}>{year}년 누적</div>
+              <div style={{ fontSize: 10, color: "#bbb", letterSpacing: 1, textTransform: "uppercase", marginBottom: 14 }}>{t.yearTotal(year)}</div>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-                <span style={{ fontSize: 13, color: "#999" }}>총 근무시간</span>
+                <span style={{ fontSize: 13, color: "#999" }}>{t.totalHours}</span>
                 <span className="mono" style={{ fontSize: 14, fontWeight: 500, color: "#2d7a4f" }}>{formatHours(yearlySummary.totalH)}</span>
               </div>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                <span style={{ fontSize: 13, color: "#999" }}>총 예상 급여</span>
+                <span style={{ fontSize: 13, color: "#999" }}>{t.totalPay}</span>
                 <span className="mono" style={{ fontSize: 14, fontWeight: 500 }}>{formatEuro(Math.round(yearlySummary.totalPay))}</span>
               </div>
             </div>
