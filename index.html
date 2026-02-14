@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>알바 기록</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&display=swap" rel="stylesheet" />
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: #faf9f6; color: #1a1a1a; font-family: 'Noto Sans KR', -apple-system, sans-serif; }
+    .container { max-width: 480px; margin: 0 auto; padding: 48px 24px 72px; }
+
+    .nav-btn {
+      background: none; border: 1.5px solid #ddd; color: #1a1a1a;
+      border-radius: 50%; width: 34px; height: 34px; font-size: 16px;
+      cursor: pointer; display: flex; align-items: center; justify-content: center;
+      transition: all 0.15s ease; line-height: 1;
+    }
+    .nav-btn:hover { background: #1a1a1a; color: #faf9f6; border-color: #1a1a1a; }
+
+    .entry-row {
+      display: grid;
+      grid-template-columns: 48px 1fr 1fr 56px 28px;
+      align-items: center;
+      padding: 13px 0;
+      border-bottom: 1px solid #f0ede7;
+    }
+    .entry-row:last-child { border-bottom: none; }
+
+    .time-input {
+      background: none; border: none; color: #1a1a1a;
+      font-family: 'DM Mono', monospace; font-size: 14px;
+      padding: 4px 0; outline: none; width: 72px; text-align: center;
+    }
+    .time-input:focus { color: #2d7a4f; }
+    .time-input::-webkit-calendar-picker-indicator { display: none; }
+
+    .date-input {
+      background: none; border: none; color: #1a1a1a;
+      font-family: 'DM Mono', monospace; font-size: 14px; font-weight: 500;
+      padding: 4px 0; outline: none; width: 28px; text-align: center;
+    }
+    .date-input::placeholder { color: #d0cdc6; }
+
+    .del-btn {
+      background: none; border: none; color: #d0cdc6; font-size: 14px;
+      cursor: pointer; padding: 2px 4px; border-radius: 4px; transition: color 0.15s;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .del-btn:hover { color: #c0392b; }
+
+    .add-btn {
+      background: none; border: 1.5px dashed #ddd; color: #aaa;
+      border-radius: 10px; padding: 13px; width: 100%; font-size: 14px;
+      cursor: pointer; transition: all 0.15s; font-family: inherit;
+    }
+    .add-btn:hover { border-color: #999; color: #666; }
+
+    .rate-edit-btn {
+      background: none; border: 1px solid #ddd; color: #999; font-size: 11px;
+      border-radius: 4px; padding: 2px 8px; cursor: pointer; font-family: inherit;
+      transition: all 0.15s; line-height: 1.4;
+    }
+    .rate-edit-btn:hover { border-color: #999; color: #666; }
+
+    .confirm-btn {
+      background: #1a1a1a; color: #faf9f6; border: none; border-radius: 6px;
+      padding: 5px 12px; font-size: 12px; cursor: pointer; font-family: inherit; font-weight: 500;
+    }
+
+    .rate-num-input {
+      background: none; border: none; border-bottom: 1.5px solid #1a1a1a;
+      color: #1a1a1a; font-family: 'DM Mono', monospace; font-size: 16px;
+      padding: 2px 0; outline: none; width: 80px; text-align: right;
+    }
+
+    .hour-bar {
+      height: 2px; border-radius: 1px; background: #2d7a4f;
+      transition: width 0.3s ease; opacity: 0.4;
+    }
+
+    .mono { font-family: 'DM Mono', monospace; }
+    .serif { font-family: 'Fraunces', serif; }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.3.1/umd/react.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.3.1/umd/react-dom.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.26.9/babel.min.js"></script>
+  <script type="text/babel">
+    const { useState, useMemo } = React;
+
+    const MONTHS = ["1월","2월","3월","4월","5월","6월","7월","8월","9월","10월","11월","12월"];
+
+    const defaultEntries = {
+      "2025-01": [
+        { date: "20", start: "09:00", end: "18:00" },
+        { date: "21", start: "09:00", end: "18:00" },
+        { date: "27", start: "09:00", end: "18:00" },
+        { date: "28", start: "09:00", end: "18:00" },
+        { date: "30", start: "14:00", end: "18:00" },
+      ],
+      "2025-02": [
+        { date: "3", start: "14:00", end: "18:00" },
+        { date: "4", start: "09:00", end: "13:00" },
+        { date: "5", start: "14:00", end: "17:00" },
+        { date: "6", start: "14:00", end: "17:00" },
+        { date: "7", start: "14:00", end: "18:00" },
+        { date: "11", start: "09:00", end: "13:00" },
+        { date: "12", start: "09:00", end: "18:00" },
+      ],
+    };
+
+    function calcHours(start, end) {
+      if (!start || !end) return 0;
+      const [sh, sm] = start.split(":").map(Number);
+      const [eh, em] = end.split(":").map(Number);
+      return Math.max(0, (eh * 60 + em - sh * 60 - sm) / 60);
+    }
+
+    function formatHours(h) {
+      const hrs = Math.floor(h);
+      const mins = Math.round((h - hrs) * 60);
+      return mins > 0 ? `${hrs}h ${mins}m` : `${hrs}h`;
+    }
+
+    function formatEuro(n) {
+      return new Intl.NumberFormat("de-DE", { style: "currency", currency: "EUR" }).format(n);
+    }
+
+    function App() {
+      const [year, setYear] = useState(2025);
+      const [monthIdx, setMonthIdx] = useState(0);
+      const [hourlyRate, setHourlyRate] = useState(12.82);
+      const [entries, setEntries] = useState(defaultEntries);
+      const [editingRate, setEditingRate] = useState(false);
+      const [rateInput, setRateInput] = useState("12.82");
+
+      const monthKey = `${year}-${String(monthIdx + 1).padStart(2, "0")}`;
+      const currentEntries = entries[monthKey] || [];
+
+      const addEntry = () => {
+        const updated = { ...entries };
+        if (!updated[monthKey]) updated[monthKey] = [];
+        updated[monthKey] = [...updated[monthKey], { date: "", start: "09:00", end: "18:00" }];
+        setEntries(updated);
+      };
+
+      const updateEntry = (idx, field, value) => {
+        const updated = { ...entries };
+        updated[monthKey] = [...updated[monthKey]];
+        updated[monthKey][idx] = { ...updated[monthKey][idx], [field]: value };
+        setEntries(updated);
+      };
+
+      const removeEntry = (idx) => {
+        const updated = { ...entries };
+        updated[monthKey] = updated[monthKey].filter((_, i) => i !== idx);
+        setEntries(updated);
+      };
+
+      const totalHours = useMemo(() => {
+        return currentEntries.reduce((sum, e) => sum + calcHours(e.start, e.end), 0);
+      }, [currentEntries]);
+
+      const expectedPay = totalHours * hourlyRate;
+
+      const yearlySummary = useMemo(() => {
+        let totalH = 0, months = 0;
+        for (let m = 0; m < 12; m++) {
+          const key = `${year}-${String(m + 1).padStart(2, "0")}`;
+          const ents = entries[key] || [];
+          if (ents.length > 0) { months++; totalH += ents.reduce((s, e) => s + calcHours(e.start, e.end), 0); }
+        }
+        return { totalH, months, totalPay: totalH * hourlyRate };
+      }, [entries, year, hourlyRate]);
+
+      const prevMonth = () => {
+        if (monthIdx === 0) { setMonthIdx(11); setYear(y => y - 1); }
+        else setMonthIdx(m => m - 1);
+      };
+      const nextMonth = () => {
+        if (monthIdx === 11) { setMonthIdx(0); setYear(y => y + 1); }
+        else setMonthIdx(m => m + 1);
+      };
+
+      const maxH = Math.max(...currentEntries.map(e => calcHours(e.start, e.end)), 1);
+
+      return (
+        <div className="container">
+          {/* Header */}
+          <div style={{ marginBottom: 40 }}>
+            <div className="serif" style={{ fontSize: 30, fontWeight: 700, letterSpacing: -0.5, lineHeight: 1.2 }}>
+              알바 기록
+            </div>
+            <div style={{ fontSize: 13, color: "#aaa", marginTop: 6 }}>
+              근무시간 입력 · 예상 급여 자동 계산
+            </div>
+          </div>
+
+          {/* Hourly Rate */}
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 32, paddingBottom: 20, borderBottom: "1px solid #f0ede7" }}>
+            <span style={{ fontSize: 13, color: "#999" }}>시급</span>
+            {editingRate ? (
+              <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                <input className="rate-num-input" type="number" step="0.01" value={rateInput}
+                  onChange={e => setRateInput(e.target.value)} autoFocus
+                  onKeyDown={e => {
+                    if (e.key === "Enter") { setHourlyRate(Number(rateInput) || 12.82); setEditingRate(false); }
+                    if (e.key === "Escape") setEditingRate(false);
+                  }} />
+                <span style={{ fontSize: 13, color: "#999" }}>€</span>
+                <button className="confirm-btn" onClick={() => { setHourlyRate(Number(rateInput) || 12.82); setEditingRate(false); }}>확인</button>
+              </div>
+            ) : (
+              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                <span className="mono" style={{ fontSize: 16, fontWeight: 500 }}>{formatEuro(hourlyRate)}</span>
+                <button className="rate-edit-btn" onClick={() => { setRateInput(String(hourlyRate)); setEditingRate(true); }}>수정</button>
+              </div>
+            )}
+          </div>
+
+          {/* Month Nav */}
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 24 }}>
+            <button className="nav-btn" onClick={prevMonth}>‹</button>
+            <div style={{ textAlign: "center" }}>
+              <span className="mono" style={{ fontSize: 12, color: "#bbb" }}>{year}</span>
+              <div className="serif" style={{ fontSize: 22, fontWeight: 600, marginTop: 1 }}>{MONTHS[monthIdx]}</div>
+            </div>
+            <button className="nav-btn" onClick={nextMonth}>›</button>
+          </div>
+
+          {/* Summary */}
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 1, background: "#eceae4", borderRadius: 12, overflow: "hidden", marginBottom: 32 }}>
+            <div style={{ background: "#fff", padding: "20px 18px" }}>
+              <div style={{ fontSize: 11, color: "#bbb", marginBottom: 8, letterSpacing: 0.8, textTransform: "uppercase" }}>근무시간</div>
+              <div className="mono" style={{ fontSize: 24, fontWeight: 500, color: "#2d7a4f" }}>{formatHours(totalHours)}</div>
+              <div style={{ fontSize: 12, color: "#ccc", marginTop: 6 }}>{currentEntries.length}일</div>
+            </div>
+            <div style={{ background: "#fff", padding: "20px 18px" }}>
+              <div style={{ fontSize: 11, color: "#bbb", marginBottom: 8, letterSpacing: 0.8, textTransform: "uppercase" }}>예상 급여</div>
+              <div className="mono" style={{ fontSize: 24, fontWeight: 500 }}>{formatEuro(Math.round(expectedPay))}</div>
+              <div style={{ fontSize: 12, color: "#ccc", marginTop: 6 }}>Brutto</div>
+            </div>
+          </div>
+
+          {/* Table Header */}
+          <div style={{ marginBottom: 16 }}>
+            <div style={{ display: "grid", gridTemplateColumns: "48px 1fr 1fr 56px 28px", padding: "0 0 8px", borderBottom: "1.5px solid #1a1a1a", fontSize: 10, color: "#bbb", letterSpacing: 1, textTransform: "uppercase" }}>
+              <span>날짜</span>
+              <span style={{ textAlign: "center" }}>시작</span>
+              <span style={{ textAlign: "center" }}>종료</span>
+              <span style={{ textAlign: "right", paddingRight: 8 }}>시간</span>
+              <span />
+            </div>
+
+            {currentEntries.length === 0 ? (
+              <div style={{ textAlign: "center", padding: "44px 0", color: "#d0cdc6", fontSize: 14 }}>기록이 없습니다</div>
+            ) : (
+              currentEntries.map((entry, idx) => {
+                const hours = calcHours(entry.start, entry.end);
+                const barW = hours > 0 ? (hours / maxH) * 100 : 0;
+                return (
+                  <div key={idx}>
+                    <div className="entry-row">
+                      <div style={{ display: "flex", alignItems: "baseline", gap: 1 }}>
+                        <input className="date-input" type="text" value={entry.date}
+                          onChange={e => updateEntry(idx, "date", e.target.value)} placeholder="—" />
+                        <span style={{ fontSize: 10, color: "#ccc" }}>일</span>
+                      </div>
+                      <div style={{ textAlign: "center" }}>
+                        <input className="time-input" type="time" value={entry.start}
+                          onChange={e => updateEntry(idx, "start", e.target.value)} />
+                      </div>
+                      <div style={{ textAlign: "center" }}>
+                        <input className="time-input" type="time" value={entry.end}
+                          onChange={e => updateEntry(idx, "end", e.target.value)} />
+                      </div>
+                      <span className="mono" style={{ fontSize: 13, color: hours > 0 ? "#2d7a4f" : "#d0cdc6", textAlign: "right", paddingRight: 8 }}>
+                        {hours > 0 ? formatHours(hours) : "—"}
+                      </span>
+                      <button className="del-btn" onClick={() => removeEntry(idx)}>×</button>
+                    </div>
+                    {hours > 0 && (
+                      <div style={{ paddingLeft: 48, marginTop: -4 }}>
+                        <div className="hour-bar" style={{ width: `${barW}%` }} />
+                      </div>
+                    )}
+                  </div>
+                );
+              })
+            )}
+          </div>
+
+          <button className="add-btn" onClick={addEntry}>+ 근무 추가</button>
+
+          {/* Yearly */}
+          {yearlySummary.months > 0 && (
+            <div style={{ marginTop: 36, padding: "20px 0 0", borderTop: "1px solid #f0ede7" }}>
+              <div style={{ fontSize: 10, color: "#bbb", letterSpacing: 1, textTransform: "uppercase", marginBottom: 14 }}>{year}년 누적</div>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+                <span style={{ fontSize: 13, color: "#999" }}>총 근무시간</span>
+                <span className="mono" style={{ fontSize: 14, fontWeight: 500, color: "#2d7a4f" }}>{formatHours(yearlySummary.totalH)}</span>
+              </div>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <span style={{ fontSize: 13, color: "#999" }}>총 예상 급여</span>
+                <span className="mono" style={{ fontSize: 14, fontWeight: 500 }}>{formatEuro(Math.round(yearlySummary.totalPay))}</span>
+              </div>
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+  </script>
+</body>
+</html>
