@@ -121,6 +121,7 @@
         totalHours: "총 근무시간",
         totalPay: "총 예상 급여",
         days: (n) => `${n}일`,
+        lunchNote: "오전 출근 시 점심 1h 자동 차감",
         daySuffix: "일",
         months: ["1월","2월","3월","4월","5월","6월","7월","8월","9월","10월","11월","12월"],
       },
@@ -143,6 +144,7 @@
         totalHours: "Total hours",
         totalPay: "Total est. pay",
         days: (n) => `${n}d`,
+        lunchNote: "1h lunch auto-deducted for AM shifts",
         daySuffix: "",
         months: ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"],
       },
@@ -165,6 +167,7 @@
         totalHours: "合計勤務時間",
         totalPay: "合計予想給料",
         days: (n) => `${n}日`,
+        lunchNote: "午前出勤時、昼休み1h自動差引",
         daySuffix: "日",
         months: ["1月","2月","3月","4月","5月","6月","7月","8月","9月","10月","11月","12月"],
       },
@@ -196,7 +199,14 @@
       if (!start || !end) return 0;
       const [sh, sm] = start.split(":").map(Number);
       const [eh, em] = end.split(":").map(Number);
-      return Math.max(0, (eh * 60 + em - sh * 60 - sm) / 60);
+      const startMin = sh * 60 + sm;
+      const endMin = eh * 60 + em;
+      let total = Math.max(0, (endMin - startMin) / 60);
+      // 오전 시작(10시 이전)이고 점심시간(12~13시)을 넘기면 1시간 차감
+      if (startMin < 600 && endMin > 780) {
+        total -= 1;
+      }
+      return Math.max(0, total);
     }
 
     function formatHours(h) {
@@ -336,6 +346,11 @@
               <div className="mono" style={{ fontSize: 24, fontWeight: 500 }}>{formatEuro(Math.round(expectedPay))}</div>
               <div style={{ fontSize: 12, color: "#ccc", marginTop: 6 }}>{t.gross}</div>
             </div>
+          </div>
+
+          {/* Lunch note */}
+          <div style={{ fontSize: 11, color: "#bbb", marginBottom: 24, marginTop: -20, paddingLeft: 2 }}>
+            * {t.lunchNote}
           </div>
 
           {/* Table */}
